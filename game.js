@@ -110,18 +110,14 @@ class Level {
     if (!(actor instanceof Actor) || actor === undefined) {
       throw new Error('Объект не определен или его тип не Actor');
     }
-    if (this.grid === undefined) {
-      return undefined;
-    }
-    if (!actor.isIntersect) {
-      return undefined;
-    } else {
-      return this.actors.find(function(elem) {
-        if (elem instanceof Actor) {
-          return elem.isIntersect(actor); //не срабатывает тест на возврат объекта, с которым пересечение
-        }
-      });
-    }
+    
+    console.log(this.actors);
+    
+    return this.actors.find(function(elem) {
+      console.log(actor);
+      console.log(elem.isIntersect(actor));
+      return elem.isIntersect(actor);
+    });
   }
   
   obstacleAt(pos, size) {
