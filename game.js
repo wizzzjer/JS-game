@@ -58,7 +58,7 @@ class Actor {
   act() {};
   
   isIntersect(actor) {
-    if (!(actor instanceof Actor) || actor == undefined) {
+    if (!(actor instanceof Actor) || actor === undefined) {
       throw new Error('Аргумент должен быть определен и его тип должен быть actor');
     }    
     
@@ -66,7 +66,7 @@ class Actor {
       return false;  
     }
     
-    //странно, что не проходит проверку на смежные границы
+    //не проходит тест на смежные границы, хотя вроде должен?
     if ( (actor.left > this.left && actor.left < this.right) || (actor.right > this.left && actor.right < this.right) || (actor.top > this.top && actor.top < this.bottom) || (actor.bottom > this.top && actor.bottom < this.bottom) ) {
       return true;    
     } else {
@@ -84,7 +84,7 @@ class Level {
       return actor.type === 'player';
     });
     
-    if (typeof(map) == 'undefined') {
+    if (map === undefined) {
       this.height = 0;
       this.width = 0;
     } else {
@@ -110,7 +110,7 @@ class Level {
     if (!(actor instanceof Actor) || actor === undefined) {
       throw new Error('Объект не определен или его тип не Actor');
     }
-    if (this.grid == undefined) {
+    if (this.grid === undefined) {
       return undefined;
     }
     if (!actor.isIntersect) {
@@ -118,7 +118,7 @@ class Level {
     } else {
       return this.actors.find(function(elem) {
         if (elem instanceof Actor) {
-          return elem.isIntersect(actor); //не возвращает почему-то
+          return elem.isIntersect(actor); //не срабатывает тест на возврат объекта, с которым пересечение
         }
       });
     }
@@ -129,28 +129,45 @@ class Level {
       throw err;
     }  
     
-    let spot = new Actor(pos, size);
-    
-    console.log(spot);
-    
-    if (spot.bottom < 0) {
+    let spot = new Actor(pos, size);  
+    if (spot.bottom > this.height) { //но почему???
       return 'lava';
     } else if (spot.top >= this.height || spot.left <= 0 || spot.right >= this.width) {  
       return 'wall';
-    } else if (!spot.isIntersect(this)) {
+    } else {
       return undefined;
     }
   }
   
-  removeActor(Actor) {
-    
+  removeActor(actor) {
+    this.actors = this.actors.filter(function(elem) {
+      return !(elem === actor);
+    });
   }
   
-  noMoreActors(type) {
+  noMoreActors(actorType) {   
+    let isThere = this.actors.find(function(elem) {
+      return elem.type === actorType;
+    });
     
+    if (isThere !== undefined) {
+      return false;
+    } else {
+      return true;
+    }
   }
   
-  playerTouched(type, Actor) {
+  playerTouched(actorType, actor) {
+    if (actorType === 'lava' || actorType === 'fireball') {
+      this.status = 'lost';
+    }
+    
+    if (actorType === 'coin') {
+      this.removeActor(actor);
+      if (this.noMoreActors('coin')) {
+        this.status = 'won';
+      }
+    }
     
   }
   
@@ -196,9 +213,3 @@ const otherActor = level.actorAt(player);
 if (otherActor === fireball) {
   console.log('Пользователь столкнулся с шаровой молнией');
 }
-
-
-
-
-
-
