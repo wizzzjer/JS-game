@@ -6,12 +6,14 @@ class Vector {
     this.x = x;
     this.y = y;
   }
+  
   plus(vector) {
     if (!(vector instanceof Vector)) {
       throw new Error('Должен быть передан объект типа vector');
     }
     return new Vector(this.x + vector.x, this.y + vector.y);
   }
+  
   times(multiplier) {
     return new Vector(this.x * multiplier, this.y * multiplier);
   }
@@ -21,44 +23,39 @@ class Vector {
 class Actor {
   constructor(pos = new Vector(0, 0), size = new Vector(1, 1), speed = new Vector(0, 0)) {
     
-    if (!(pos instanceof Vector) || !(size instanceof Vector) || !(speed instanceof Vector)) {
+    if ( !((pos instanceof Vector) && (size instanceof Vector) && (speed instanceof Vector)) ) {
       throw new Error('Должен быть передан объект типа vector');
     }   
     
     this.pos = pos;
     this.size = size;
-    this.speed = speed;
-    
-    const leftConfig = {
-      value: pos.x
-    };
-    Object.defineProperty(this, 'left', leftConfig);
-    
-    const rightConfig = {
-      value: pos.x + size.x
-    };
-    Object.defineProperty(this, 'right', rightConfig);
-    
-    const topConfig = {
-      value: pos.y
-    };
-    Object.defineProperty(this, 'top', topConfig);
-    
-    const bottomConfig = {
-      value: pos.y + size.y
-    };
-    Object.defineProperty(this, 'bottom', bottomConfig);    
-    
+    this.speed = speed;    
   }
   
   get type() {
     return 'actor';
   }  
   
+  get left() {
+    return this.pos.x;
+  }
+  
+  get right() {
+    return this.pos.x + this.size.x;
+  }
+  
+  get top() {
+    return this.pos.y;
+  }
+  
+  get bottom() {
+    return this.pos.y + this.size.y;
+  }  
+  
   act() {};
   
   isIntersect(actor) {
-    if (!(actor instanceof Actor) || actor === undefined) {
+    if (!(actor instanceof Actor)) {
       throw new Error('Аргумент должен быть определен и его тип должен быть actor');
     }    
     
@@ -66,9 +63,16 @@ class Actor {
       return false;  
     }
     
-    //не проходит тест на смежные границы, хотя вроде должен?
-    if ( (actor.left > this.left && actor.left < this.right) || (actor.right > this.left && actor.right < this.right) || (actor.top > this.top && actor.top < this.bottom) || (actor.bottom > this.top && actor.bottom < this.bottom) ) {
+    if ( (actor.left > this.left && actor.left < this.right) || (actor.right > this.left && actor.right < this.right) 
+      || (actor.top > this.top && actor.top < this.bottom) || (actor.bottom > this.top && actor.bottom < this.bottom) ) {
+      
+      // частный случай условия выше: смежные границы
+      if (actor.left === this.right || actor.right === this.left || actor.top === this.bottom || actor.bottom === this.top) {
+        return false;
+      }
+      
       return true;    
+      
     } else {
       return false;    
     }
@@ -79,17 +83,18 @@ class Actor {
 class Level {
   constructor(map, actors = []) {
     this.grid = map;
+    /*this.grid = [].concat(map).filter(Boolean);*/
     this.actors = actors;
     this.player = this.actors.find(function(actor) {
       return actor.type === 'player';
     });
     
-    if (map === undefined) {
+    if (this.grid === undefined) {
       this.height = 0;
       this.width = 0;
     } else {
       this.height = map.length;
-      this.width = Math.max(...map.map(function(arr) {
+      this.width = Math.max(...this.grid.map(function(arr) {
           return arr.length;
       }));      
     }
@@ -107,50 +112,51 @@ class Level {
   }
   
   actorAt(actor) {
-    if (!(actor instanceof Actor) || actor === undefined) {
+    if (!(actor instanceof Actor)) {
       throw new Error('Объект не определен или его тип не Actor');
-    }
-    
-    console.log(this.actors);
-    
-    return this.actors.find(function(elem) {
-      console.log(actor);
-      console.log(elem.isIntersect(actor));
-      return elem.isIntersect(actor);
+    };
+    console.dir(this);
+    return this.actors.find(function(arrayActor) {
+      return arrayActor.isIntersect(actor);
     });
+    
   }
   
   obstacleAt(pos, size) {
     if (!(pos instanceof Vector) || !(size instanceof Vector)) {
-      throw err;
+      throw new Error('Тип переданных положения и размера не Actor');
     }  
     
     let spot = new Actor(pos, size);  
-    if (spot.bottom > this.height) { //но почему???
+    
+    if (spot.bottom >= this.height) {
       return 'lava';
-    } else if (spot.top >= this.height || spot.left <= 0 || spot.right >= this.width) {  
+    } 
+    
+    if (spot.top < 0 || spot.left < 0 || spot.right >= this.width) {  
       return 'wall';
-    } else {
-      return undefined;
     }
+    
+    for (let y = Math.floor(spot.top); y < Math.ceil(spot.bottom); y++) {
+      for (let x = Math.floor(spot.left); x < Math.ceil(spot.right); x++) {
+        if (typeof(this.grid[x][y] !== 'undefined')) {
+          return (this.grid)[x][y];
+        }
+      }
+    }    
+    
   }
   
   removeActor(actor) {
-    this.actors = this.actors.filter(function(elem) {
-      return !(elem === actor);
+    this.actors = this.actors.filter(function(arrayActor) {
+      return !(arrayActor === actor);
     });
   }
   
   noMoreActors(actorType) {   
-    let isThere = this.actors.find(function(elem) {
-      return elem.type === actorType;
+    return !this.actors.some(function(arrayActor) {
+      return arrayActor.type === actorType;
     });
-    
-    if (isThere !== undefined) {
-      return false;
-    } else {
-      return true;
-    }
   }
   
   playerTouched(actorType, actor) {
@@ -163,49 +169,62 @@ class Level {
       if (this.noMoreActors('coin')) {
         this.status = 'won';
       }
-    }
-    
+    } 
+  }
+}
+
+/* LevelParser */
+class LevelParser {
+  constructor(vocab = {}) {
+    this.vocab = vocab;
   }
   
-}
-
-
-
-
-
-const grid = [
-  [undefined, undefined],
-  ['wall', 'wall']
-];
-
-function MyCoin(title) {
-  this.type = 'coin';
-  this.title = title;
-}
-MyCoin.prototype = Object.create(Actor);
-MyCoin.constructor = MyCoin;
-
-const goldCoin = new MyCoin('Золото');
-const bronzeCoin = new MyCoin('Бронза');
-const player = new Actor();
-const fireball = new Actor();
-
-const level = new Level(grid, [ goldCoin, bronzeCoin, player, fireball ]);
-
-level.playerTouched('coin', goldCoin);
-level.playerTouched('coin', bronzeCoin);
-
-if (level.noMoreActors('coin')) {
-  console.log('Все монеты собраны');
-  console.log(`Статус игры: ${level.status}`);
-}
-
-const obstacle = level.obstacleAt(new Vector(1, 1), player.size);
-if (obstacle) {
-  console.log(`На пути препятствие: ${obstacle}`);
-}
-
-const otherActor = level.actorAt(player);
-if (otherActor === fireball) {
-  console.log('Пользователь столкнулся с шаровой молнией');
+  actorFromSymbol(symb) {
+    if (symb === undefined) {
+      return;
+    } else {
+      return this.vocab[symb];
+    }
+  }
+  
+  obstacleFromSymbol(symb) {
+    if (symb === 'x') {
+      return 'wall'  ;
+    } else if (symb === '!') {
+      return 'lava';
+    } else {
+      return;
+    }
+  }
+  
+  createGrid(strings) {
+    return strings.map(arraySymb => arraySymb.split('').map(splitedSymb => this.obstacleFromSymbol(splitedSymb)));
+  }
+  
+  createActors(strings) {
+    const constructArray = [];
+      for (let x in strings) {
+        for (let y in strings[x]) {
+          
+          let symbol = strings[x][y];
+          let constructor = this.vocab[symbol];
+          
+          if (typeof(constructor) !== 'function') {
+            continue;
+          } 
+          
+          let obj = new constructor(new Vector(parseInt(y), parseInt(x)));
+          
+          if (obj instanceof Actor) {
+            constructArray.push(obj);
+          }          
+        }
+      }
+    return constructArray;
+  }  
+  
+  parse(strings) {
+    return new Level(this.createGrid(strings), this.createActors(strings));
+  }
+  
 }
