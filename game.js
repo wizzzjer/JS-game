@@ -228,3 +228,71 @@ class LevelParser {
   }
   
 }
+
+/* Fireball */
+class Fireball extends Actor {
+  constructor(pos = new Vector(0, 0), speed = new Vector(0, 0)) {
+    super(pos, new Vector(1, 1), speed);
+  }
+  
+  get type() {
+    return 'fireball';
+  }   
+  
+  getNextPosition(time = 1) {
+    return new Vector((this.pos.x + this.speed.x * time), (this.pos.y + this.speed.y * time));
+  }
+  
+  handleObstacle() {
+    this.speed.x = -this.speed.x;
+    this.speed.y = -this.speed.y;
+  }
+  
+  act(time, lvl) {
+    let nextPos = this.getNextPosition(time);
+    let isThereObstacle = lvl.obstacleAt(nextPos, this.size);
+    
+    if (isThereObstacle === undefined ) {
+      this.pos = new Vector(nextPos.x, nextPos.y);
+    } else {
+      this.handleObstacle();
+    }
+  }
+}
+
+/* Fireballs */
+class HorizontalFireball extends Fireball {
+  constructor(pos = new Vector(0, 0)) {
+    super(pos, new Vector(2, 0));
+  }  
+  
+  get type() {
+    return 'fireball';
+  }
+}
+
+class VerticalFireball extends Fireball {
+  constructor(pos = new Vector(0, 0)) {
+    super(pos, new Vector(0, 2));
+  }  
+  
+  get type() {
+    return 'fireball';
+  }  
+}
+
+class FireRain extends Fireball {
+  constructor(pos = new Vector(0, 0)) {
+    super(pos, new Vector(0, 3));
+    this.startPos = pos;
+  }  
+  
+  get type() {
+    return 'fireball';
+  }
+  
+  handleObstacle() {
+    this.pos = this.startPos;
+  }
+}
+
