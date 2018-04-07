@@ -63,19 +63,12 @@ class Actor {
       return false;  
     }
     
-    if ( (actor.left > this.left && actor.left < this.right) || (actor.right > this.left && actor.right < this.right) 
-      || (actor.top > this.top && actor.top < this.bottom) || (actor.bottom > this.top && actor.bottom < this.bottom) ) {
-      
-      // частный случай условия выше: смежные границы
-      if (actor.left === this.right || actor.right === this.left || actor.top === this.bottom || actor.bottom === this.top) {
-        return false;
-      }
-      
-      return true;    
-      
+    if (this.right <= actor.left || this.bottom <= actor.top || this.top >= actor.bottom || this.left >= actor.right) {
+      return false;  
     } else {
-      return false;    
+      return true;    
     }
+    
   }  
 }
 
@@ -115,7 +108,6 @@ class Level {
     if (!(actor instanceof Actor)) {
       throw new Error('Объект не определен или его тип не Actor');
     };
-    console.dir(this);
     return this.actors.find(function(arrayActor) {
       return arrayActor.isIntersect(actor);
     });
@@ -295,4 +287,86 @@ class FireRain extends Fireball {
     this.pos = this.startPos;
   }
 }
+
+/* Coin */
+class Coin extends Actor {
+  constructor(pos = new Vector(0, 0)) {
+    super(new Vector(pos.x + 0.2, pos.y + 0.1), new Vector(0.6, 0.6));
+    this.realPos = this.pos;
+    this.springSpeed = 8;
+    this.springDist = 0.07;
+    this.spring = Math.random() * (Math.PI - 0);
+  }
+  
+  get type() {
+    return 'coin';
+  }
+  
+  updateSpring(time = 1) {
+    this.spring += this.springSpeed * time;
+  }
+  
+  getSpringVector() {
+    return new Vector(0, (Math.sin(this.spring) * this.springDist));
+  }
+  
+  getNextPosition(time = 1) {
+    this.updateSpring(time);
+    return this.realPos.plus(this.getSpringVector());
+  }
+  
+  act(time) {
+    this.pos = this.getNextPosition(time);
+  }
+}
+
+/* Player */
+class Player extends Actor {
+  constructor(pos = new Vector(0, 0)) {
+    super(new Vector(pos.x, pos.y - 0.5), new Vector(0.8, 1.5), new Vector(0, 0));
+  }
+  
+  get type() {
+    return 'player';
+  }  
+  
+}
+
+
+
+const schemas = [
+  [
+    '         ',
+    '         ',
+    '    =    ',
+    '       o ',
+    '     !xxx',
+    ' @       ',
+    'xxx!     ',
+    '         '
+  ],
+  [
+    '      v  ',
+    '    v    ',
+    '  v      ',
+    '        o',
+    '        x',
+    '@   x    ',
+    'x        ',
+    '         '
+  ]
+];
+const actorDict = {
+  '@': Player,
+  'v': FireRain,
+  'x': Vector,
+  '!': Vector,
+  'o': Coin,
+  '=': HorizontalFireball,
+  '|': VerticalFireball
+}
+const parser = new LevelParser(actorDict);
+runGame(schemas, parser, DOMDisplay)
+  .then(() => console.log('Вы выиграли приз!'));
+
 
