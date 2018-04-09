@@ -23,7 +23,7 @@ class Vector {
 class Actor {
   constructor(pos = new Vector(0, 0), size = new Vector(1, 1), speed = new Vector(0, 0)) {
     
-    if ( !((pos instanceof Vector) && (size instanceof Vector) && (speed instanceof Vector)) ) {
+    if ( !(pos instanceof Vector && size instanceof Vector && speed instanceof Vector) ) {
       throw new Error('Должен быть передан объект типа vector');
     }   
     
@@ -63,11 +63,7 @@ class Actor {
       return false;  
     }
     
-    if (this.right <= actor.left || this.bottom <= actor.top || this.top >= actor.bottom || this.left >= actor.right) {
-      return false;  
-    } else {
-      return true;    
-    }
+    return !(this.right <= actor.left || this.bottom <= actor.top || this.top >= actor.bottom || this.left >= actor.right);
     
   }  
 }
@@ -75,21 +71,20 @@ class Actor {
 /* Level */
 class Level {
   constructor(map, actors = []) {
-    this.grid = map;
-    /*this.grid = [].concat(map).filter(Boolean);*/
+    this.grid = [].concat(map).filter(Boolean);
     this.actors = actors;
     this.player = this.actors.find(function(actor) {
       return actor.type === 'player';
     });
     
-    if (this.grid === undefined) {
+    if (this.grid.length === 0) {
       this.height = 0;
       this.width = 0;
     } else {
-      this.height = map.length;
+      this.height = this.grid.length;     
       this.width = Math.max(...this.grid.map(function(arr) {
           return arr.length;
-      }));      
+      }));
     }
     
     this.status = null;
@@ -97,19 +92,15 @@ class Level {
   }
   
   isFinished() {
-    if (this.status !== null && this.finishDelay < 0) {
-      return true;
-    } else {
-      return false;    
-    }
+    return this.status !== null && this.finishDelay < 0;
   }
   
   actorAt(actor) {
     if (!(actor instanceof Actor)) {
       throw new Error('Объект не определен или его тип не Actor');
     };
-    return this.actors.find(function(arrayActor) {
-      return arrayActor.isIntersect(actor);
+    return this.actors.find(function(item) {
+      return item.isIntersect(actor);
     });
     
   }
@@ -119,7 +110,7 @@ class Level {
       throw new Error('Тип переданных положения и размера не Actor');
     }  
     
-    let spot = new Actor(pos, size);  
+    const spot = new Actor(pos, size);  
     
     if (spot.bottom >= this.height) {
       return 'lava';
@@ -131,8 +122,8 @@ class Level {
     
     for (let y = Math.floor(spot.top); y < Math.ceil(spot.bottom); y++) {
       for (let x = Math.floor(spot.left); x < Math.ceil(spot.right); x++) {
-        if (typeof(this.grid[x][y] !== 'undefined')) {
-          return (this.grid)[x][y];
+        if (this.grid[y][x] !== undefined) {
+          return this.grid[y][x];
         }
       }
     }    
@@ -140,14 +131,14 @@ class Level {
   }
   
   removeActor(actor) {
-    this.actors = this.actors.filter(function(arrayActor) {
-      return !(arrayActor === actor);
+    this.actors = this.actors.filter(function(item) {
+      return !(item === actor);
     });
   }
   
   noMoreActors(actorType) {   
-    return !this.actors.some(function(arrayActor) {
-      return arrayActor.type === actorType;
+    return !this.actors.some(function(item) {
+      return item.type === actorType;
     });
   }
   
@@ -180,12 +171,11 @@ class LevelParser {
   }
   
   obstacleFromSymbol(symb) {
-    if (symb === 'x') {
-      return 'wall'  ;
-    } else if (symb === '!') {
-      return 'lava';
-    } else {
-      return;
+    switch(symb) {
+        case 'x':
+            return 'wall';
+        case '!':
+            return 'lava';
     }
   }
   
@@ -194,12 +184,15 @@ class LevelParser {
   }
   
   createActors(strings) {
+    
     const constructArray = [];
+    
       for (let x in strings) {
+        
         for (let y in strings[x]) {
           
           let symbol = strings[x][y];
-          let constructor = this.vocab[symbol];
+          let constructor = this.vocab[symbol];  
           
           if (typeof(constructor) !== 'function') {
             continue;
@@ -211,8 +204,11 @@ class LevelParser {
             constructArray.push(obj);
           }          
         }
+        
       }
+    
     return constructArray;
+    
   }  
   
   parse(strings) {
@@ -244,7 +240,7 @@ class Fireball extends Actor {
     let nextPos = this.getNextPosition(time);
     let isThereObstacle = lvl.obstacleAt(nextPos, this.size);
     
-    if (isThereObstacle === undefined ) {
+    if (isThereObstacle === undefined) {
       this.pos = new Vector(nextPos.x, nextPos.y);
     } else {
       this.handleObstacle();
@@ -295,7 +291,7 @@ class Coin extends Actor {
     this.realPos = this.pos;
     this.springSpeed = 8;
     this.springDist = 0.07;
-    this.spring = Math.random() * (Math.PI - 0);
+    this.spring = Math.random() * (Math.PI);
   }
   
   get type() {
@@ -359,8 +355,6 @@ const schemas = [
 const actorDict = {
   '@': Player,
   'v': FireRain,
-  'x': Vector,
-  '!': Vector,
   'o': Coin,
   '=': HorizontalFireball,
   '|': VerticalFireball
